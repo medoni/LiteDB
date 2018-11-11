@@ -13,7 +13,7 @@ namespace LiteDB
         /// <summary>
         /// Position, on page, about page type
         /// </summary>
-        private const int PAGE_TYPE_POSITION = 4;
+        internal const int PAGE_TYPE_POSITION = 4;
 
         /// <summary>
         /// Map lock positions

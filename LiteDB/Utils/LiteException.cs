@@ -28,6 +28,7 @@ namespace LiteDB
         public const int READ_ONLY_DATABASE = 125;
         public const int TRANSACTION_NOT_SUPPORTED = 126;
         public const int SYNTAX_ERROR = 127;
+        public const int MMAP_FILEMODE_NOT_SUPPORTED = 128;
 
         public const int INVALID_FORMAT = 200;
         public const int DOCUMENT_MAX_DEPTH = 201;
@@ -205,6 +206,10 @@ namespace LiteDB
                 Line = s.Source,
                 Position = s.Index
             };
+        }
+
+        internal static LiteException MMapFileModeNotSupported(FileMode mode) {
+            return new LiteException(MMAP_FILEMODE_NOT_SUPPORTED, $"MemoryMappedFile-DiskService doesn't support {mode.ToString()} file mode.");
         }
 
         #endregion

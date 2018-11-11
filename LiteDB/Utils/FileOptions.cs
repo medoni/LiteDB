@@ -23,7 +23,9 @@ namespace LiteDB
             this.Journal = true;
             this.InitialSize = 0;
             this.LimitSize = long.MaxValue;
-#if HAVE_LOCK
+#if HAVE_MMAP
+            this.FileMode = FileMode.MMap;
+#elif HAVE_LOCK
             this.FileMode = FileMode.Shared;
 #else
             this.FileMode = FileMode.Exclusive;
@@ -38,6 +40,9 @@ namespace LiteDB
     {
 #if HAVE_LOCK
         Shared,
+#endif
+#if HAVE_MMAP
+        MMap,
 #endif
         Exclusive,
         ReadOnly

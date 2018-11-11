@@ -116,7 +116,7 @@ namespace LiteDB.Tests.Database
             Assert.AreEqual(null, connectionString.Password);
             Assert.AreEqual(5000, connectionString.CacheSize);
             Assert.AreEqual(new TimeSpan(0, 1, 0), connectionString.Timeout);
-            Assert.AreEqual(FileMode.Shared, connectionString.Mode);
+            Assert.AreEqual(FileMode.MMap, connectionString.Mode);
             Assert.AreEqual(0, connectionString.InitialSize);
             Assert.AreEqual(long.MaxValue, connectionString.LimitSize);
             Assert.AreEqual(Logger.NONE, connectionString.Log);

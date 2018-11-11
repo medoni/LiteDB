@@ -17,8 +17,8 @@ namespace LiteDB.Tests.Concurrency
         {
             using (var file = new TempFile())
             {
-                using (var dbA = new LiteEngine(file.Filename))
-                using (var dbB = new LiteEngine(file.Filename))
+                using (var dbA = new LiteEngine(CreateDiskService(file.Filename)))
+                using (var dbB = new LiteEngine(CreateDiskService(file.Filename)))
                 {
                     dbA.EnsureIndex("col", "process", false);
 
@@ -57,8 +57,8 @@ namespace LiteDB.Tests.Concurrency
         {
             using (var file = new TempFile())
             {
-                using (var dbA = new LiteEngine(file.Filename))
-                using (var dbB = new LiteEngine(file.Filename))
+                using (var dbA = new LiteEngine(CreateDiskService(file.Filename)))
+                using (var dbB = new LiteEngine(CreateDiskService(file.Filename)))
                 {
                     dbA.EnsureIndex("col", "process", false);
 
@@ -99,8 +99,8 @@ namespace LiteDB.Tests.Concurrency
         {
             using (var file = new TempFile())
             {
-                using (var dbA = new LiteEngine(file.Filename))
-                using (var dbB = new LiteEngine(file.Filename))
+                using (var dbA = new LiteEngine(CreateDiskService(file.Filename)))
+                using (var dbB = new LiteEngine(CreateDiskService(file.Filename)))
                 {
                     dbA.EnsureIndex("col", "process", false);
 
@@ -137,6 +137,11 @@ namespace LiteDB.Tests.Concurrency
 
                 }
             }
+        }
+
+        private IDiskService CreateDiskService(string filename) {
+            var options = new FileOptions() { FileMode = FileMode.Shared };
+            return new FileDiskService(filename, options);
         }
     }
 }

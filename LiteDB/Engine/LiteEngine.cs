@@ -71,7 +71,7 @@ namespace LiteDB
         /// Initialize LiteEngine using default FileDiskService
         /// </summary>
         public LiteEngine(string filename, bool journal = true)
-            : this(new FileDiskService(filename, journal))
+            : this(CreateFileDiskService(filename, new FileOptions { Journal = journal}))
         {
         }
 
@@ -79,7 +79,7 @@ namespace LiteDB
         /// Initialize LiteEngine with password encryption
         /// </summary>
         public LiteEngine(string filename, string password, bool journal = true)
-            : this(new FileDiskService(filename, new FileOptions { Journal = journal }), password)
+            : this(CreateFileDiskService(filename, new FileOptions { Journal = journal }), password)
         {
         }
 
@@ -149,6 +149,18 @@ namespace LiteDB
                 this.Dispose();
                 throw;
             }
+        }
+
+        private static IDiskService CreateFileDiskService(string filename, FileOptions options)
+        {
+#if HAVE_MMAP
+            if (options.FileMode == FileMode.MMap) 
+            {
+                return new MMapDiskService(filename, options);
+            }
+#endif
+
+            return new FileDiskService(filename, options);
         }
 
         /// <summary>
@@ -267,7 +279,11 @@ namespace LiteDB
             // if initial size is defined, lets create empty pages in a linked list
             if (emptyPages > 0)
             {
-                stream.SetLength(initialSize);
+                if (stream.Length < initialSize)
+                {
+                    // MMapViewStream doesn't support SetLength and has already initialSize set.
+                    stream.SetLength(initialSize);
+                }
 
                 var pageID = 1u;
 

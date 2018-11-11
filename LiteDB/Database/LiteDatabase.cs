@@ -76,7 +76,21 @@ namespace LiteDB
                 FileMode = _connectionString.Mode
             };
 
-            _engine = new LazyLoad<LiteEngine>(() => new LiteEngine(new FileDiskService(_connectionString.Filename, options), _connectionString.Password, _connectionString.Timeout, _connectionString.CacheSize, _log, _connectionString.UtcDate));
+            _engine = new LazyLoad<LiteEngine>(() => new LiteEngine(
+                CreateFileDiskService(_connectionString.Filename, options),
+                _connectionString.Password, _connectionString.Timeout, _connectionString.CacheSize, _log, _connectionString.UtcDate)
+            );
+        }
+
+        private static IDiskService CreateFileDiskService(string fileName, FileOptions options)
+        {
+#if HAVE_MMAP
+            if (options.FileMode == FileMode.MMap)
+            {
+                return new MMapDiskService(fileName, options);
+            }
+#endif
+            return new FileDiskService(fileName, options);
         }
 
         /// <summary>

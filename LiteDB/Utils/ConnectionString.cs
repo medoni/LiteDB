@@ -36,10 +36,13 @@ namespace LiteDB
         /// <summary>
         /// "mode": Define if datafile will be shared, exclusive or read only access (default in environments with file locking: Shared, otherwise: Exclusive)
         /// </summary>
-#if HAVE_LOCK
-        public FileMode Mode { get; set; } = FileMode.Shared;
+        public FileMode Mode { get; set; } =
+#if HAVE_MMAP
+            FileMode.MMap;
+#elif HAVE_LOCK
+            FileMode.Shared;
 #else
-        public FileMode Mode { get; set; } = FileMode.Exclusive;
+            FileMode.Exclusive;
 #endif
 
         /// <summary>
