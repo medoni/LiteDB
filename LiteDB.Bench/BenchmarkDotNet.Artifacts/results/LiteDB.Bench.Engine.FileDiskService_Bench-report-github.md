@@ -8,7 +8,7 @@ Intel Core i5-3210M CPU 2.50GHz (Ivy Bridge), 1 CPU, 4 logical and 2 physical co
 
 
 ```
-|         Method |      Mean |    Error |   StdDev | Ratio | RatioSD | Gen 0/1k Op | Gen 1/1k Op | Gen 2/1k Op | Allocated Memory/Op |
-|--------------- |----------:|---------:|---------:|------:|--------:|------------:|------------:|------------:|--------------------:|
-| Insert100_File |  68.89 ms | 4.577 ms | 12.99 ms |  1.00 |    0.00 |   4000.0000 |           - |           - |             7.26 MB |
-| Insert100_MMap | 314.47 ms | 6.203 ms | 11.34 ms |  4.72 |    0.44 |   5000.0000 |           - |           - |             7.82 MB |
+|         Method |     Mean |    Error |   StdDev | Ratio | RatioSD | Gen 0/1k Op | Gen 1/1k Op | Gen 2/1k Op | Allocated Memory/Op |
+|--------------- |---------:|---------:|---------:|------:|--------:|------------:|------------:|------------:|--------------------:|
+| Insert100_File | 409.4 ms | 5.939 ms | 5.265 ms |  1.00 |    0.00 |  20000.0000 |           - |           - |            30.65 MB |
+| Insert100_MMap | 358.1 ms | 7.022 ms | 7.211 ms |  0.87 |    0.02 |  18000.0000 |           - |           - |            27.33 MB |

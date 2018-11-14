@@ -15,6 +15,7 @@ namespace LiteDB
         internal const int PAGE_TYPE_POSITION = FileDiskService.PAGE_TYPE_POSITION;
         internal const int CREATE_CAPACITY = BasePage.PAGE_SIZE * 4;
 
+        internal const int TIMEOUT_CREATEMMAP = 1000;
         internal const int TIMEOUT_CREATEFILESTREAM = 10000;
 
         private readonly string _filename;
@@ -74,7 +75,9 @@ namespace LiteDB
             {
                 _log.Write(Logger.DISK, "close datafile '{0}'", Path.GetFileName(_filename));
                 _mmap.Dispose();
+                _mmapStream.Dispose();
                 _mmap = null;
+                _mmapStream = null;
             }
         }
 
@@ -86,9 +89,7 @@ namespace LiteDB
         {
             _log.Write(Logger.DISK, "initialize new datafile");
 
-            using (var stream = CreateMMapViewStream(0, _options.InitialSize, MemoryMappedFileAccess.ReadWrite)) {
-                LiteEngine.CreateDatabase(stream, password, _options.InitialSize);
-            }
+            LiteEngine.CreateDatabase(_mmapStream, password, _options.InitialSize);
         }
 
         #endregion
@@ -96,29 +97,40 @@ namespace LiteDB
         #region File Access
 
         private MemoryMappedFile _mmap;
+        private MemoryMappedViewStream _mmapStream;
         private long _capacity;
 
         private void CreateMMap(long capacity) {
-            if (_mmap != null) _mmap.Dispose();
+            if (_mmap != null) {
+                _mmapStream?.Dispose();
+                _mmap.Dispose();
+            }
 
-            _mmap = MemoryMappedFile.CreateFromFile(_filename,
-                _options.FileMode == FileMode.ReadOnly ? System.IO.FileMode.Open : System.IO.FileMode.OpenOrCreate,
-                null, capacity
-            );
+            SpinWait.SpinUntil(() =>
+            {
+                try
+                {
+                    _mmap = MemoryMappedFile.CreateFromFile(_filename,
+                        _options.FileMode == FileMode.ReadOnly ? System.IO.FileMode.Open : System.IO.FileMode.OpenOrCreate,
+                        null, capacity
+                    );
+                    return true;
+                } catch (IOException)
+                {
+                    return false;
+                }
+            }, TIMEOUT_CREATEMMAP);
+
+            
             _capacity = capacity;
+
+            _mmapStream = _mmap.CreateViewStream(0, capacity, MemoryMappedFileAccess.ReadWrite); 
         }
 
-        protected MemoryMappedViewStream CreateMMapViewStream(long offset, long size, MemoryMappedFileAccess access)
-        {
-            EnsureSize(offset + size);
-            return _mmap.CreateViewStream(offset, size, access);
-        }
 
         private void EnsureSize(long capacity, bool shrink = false) {
             if (capacity > _capacity) {
                 CreateMMap(capacity);
-            } else if (shrink && capacity != _capacity) {
-                ShrinkFile(capacity);
             }
         }
 
@@ -131,7 +143,11 @@ namespace LiteDB
         }
 
         private void ShrinkFile(long capacity) {
-            if (_mmap != null) _mmap.Dispose();
+            if (_mmap != null)
+            {
+                _mmap.Dispose();
+                _mmapStream.Dispose();
+            }
 
             using (var fs = CreateFileStream(TIMEOUT_CREATEFILESTREAM, System.IO.FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite))
             {
@@ -152,10 +168,10 @@ namespace LiteDB
             var buffer = new byte[BasePage.PAGE_SIZE];
             var position = BasePage.GetSizeOfPages(pageID);
 
-            using (var stream = CreateMMapViewStream(position, BasePage.PAGE_SIZE, MemoryMappedFileAccess.Read))
-            {
-                stream.Read(buffer, 0, BasePage.PAGE_SIZE);
-            }
+            EnsureSize(position + BasePage.PAGE_SIZE);
+
+            _mmapStream.Seek(position, SeekOrigin.Begin);
+            _mmapStream.Read(buffer, 0, BasePage.PAGE_SIZE);
 
             _log.Write(Logger.DISK, "read page #{0:0000} :: {1}", pageID, (PageType)buffer[PAGE_TYPE_POSITION]);
 
@@ -171,9 +187,10 @@ namespace LiteDB
 
             _log.Write(Logger.DISK, "write page #{0:0000} :: {1}", pageID, (PageType)buffer[PAGE_TYPE_POSITION]);
 
-            using (var stream = CreateMMapViewStream(position, BasePage.PAGE_SIZE, MemoryMappedFileAccess.Write)) {
-                stream.Write(buffer, 0, BasePage.PAGE_SIZE);
-            }
+            EnsureSize(position + BasePage.PAGE_SIZE);
+
+            _mmapStream.Seek(position, SeekOrigin.Begin);
+            _mmapStream.Write(buffer, 0, BasePage.PAGE_SIZE);
         }
 
         /// <summary>
@@ -213,18 +230,20 @@ namespace LiteDB
 
             var startPosition = BasePage.GetSizeOfPages(lastPageID + 1);
             var requiredSize = BasePage.GetSizeOfPages(pages.Count);
-            using (var stream = CreateMMapViewStream(startPosition, requiredSize, MemoryMappedFileAccess.Write)) {
-                foreach (var buffer in pages)
-                {
-                    // read pageID and pageType from buffer
-                    var pageID = BitConverter.ToUInt32(buffer, 0);
-                    var pageType = (PageType)buffer[PAGE_TYPE_POSITION];
 
-                    _log.Write(Logger.JOURNAL, "write page #{0:0000} :: {1}", pageID, pageType);
+            EnsureSize(startPosition + requiredSize);
+            _mmapStream.Seek(startPosition, SeekOrigin.Begin);
 
-                    // write page bytes
-                    stream.Write(buffer, 0, BasePage.PAGE_SIZE);
-                }
+            foreach (var buffer in pages)
+            {
+                // read pageID and pageType from buffer
+                var pageID = BitConverter.ToUInt32(buffer, 0);
+                var pageType = (PageType)buffer[PAGE_TYPE_POSITION];
+
+                _log.Write(Logger.JOURNAL, "write page #{0:0000} :: {1}", pageID, pageType);
+
+                // write page bytes
+                _mmapStream.Write(buffer, 0, BasePage.PAGE_SIZE);
             }
         }
 
@@ -240,14 +259,14 @@ namespace LiteDB
             var pos = startPos;
             var endPos = startPos + requiredSize;
 
-            using (var stream = CreateMMapViewStream(startPos, requiredSize, MemoryMappedFileAccess.Read)) {
+            EnsureSize(endPos);
+            _mmapStream.Seek(startPos, SeekOrigin.Begin);
 
-                while (pos < endPos)
-                {
-                    // read page bytes from journal file
-                    stream.Read(buffer, 0, BasePage.PAGE_SIZE);
-                    yield return buffer;
-                }
+            while (pos < endPos)
+            {
+                // read page bytes from journal file
+                _mmapStream.Read(buffer, 0, BasePage.PAGE_SIZE);
+                yield return buffer;
             }
         }
 

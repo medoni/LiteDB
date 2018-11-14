@@ -24,20 +24,6 @@ namespace LiteDB.Tests.Engine
 
 
         [TestMethod]
-        public void Test_SetLength() {
-            // test #SetLength Property
-            using (var file = new TempFile())
-            using (var ds = createDiskService(file.Filename))
-            {
-                ds.SetLength(100 * BasePage.PAGE_SIZE);
-                Assert.AreEqual(100 * BasePage.PAGE_SIZE, new FileInfo(file.Filename).Length);
-
-                ds.SetLength(10 * BasePage.PAGE_SIZE);
-                Assert.AreEqual(10 * BasePage.PAGE_SIZE, new FileInfo(file.Filename).Length);
-            }
-        }
-
-        [TestMethod]
         public void Test_FileLength()
         {
             // test #FileLength Property
@@ -57,17 +43,6 @@ namespace LiteDB.Tests.Engine
             using (var db = createDataBase($"filename={file.Filename};mode=mmap"))
             {
                 Assert.AreEqual(typeof(MMapDiskService), db.GetDiskService().GetType());
-            }
-        }
-
-
-        [TestMethod]
-        public void Test_ModeShared()
-        {
-            using (var file = new TempFile())
-            using (var db = createDataBase($"filename={file.Filename};mode=shared"))
-            {
-                Assert.AreEqual(typeof(FileDiskService), db.GetDiskService().GetType());
             }
         }
 

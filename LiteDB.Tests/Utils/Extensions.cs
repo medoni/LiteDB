@@ -15,5 +15,11 @@ namespace LiteDB.Tests
         public static IDiskService GetDiskService(this LiteEngine engine) {
             return (IDiskService)_getDiskService_Engine.Value.GetValue(engine);
         }
+
+        private static Lazy<FieldInfo> _getCacheService_Engine = new Lazy<FieldInfo>(() => typeof(LiteEngine).GetField("_cache", BindingFlags.Instance | BindingFlags.NonPublic));
+        internal static CacheService GetCacheService(this LiteEngine engine)
+        {
+            return (CacheService)_getCacheService_Engine.Value.GetValue(engine);
+        }
     }
 }

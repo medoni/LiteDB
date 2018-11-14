@@ -7,7 +7,7 @@ namespace LiteDB.Bench
     {
         public static void Main(string[] args)
         {
-            var summary = BenchmarkRunner.Run<Engine.FileDiskService_Bench>();
+            BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
         }
     }
 }
